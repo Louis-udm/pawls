@@ -2,15 +2,15 @@
     "output_directory": "/skiff_files/apps/pawls/papers/",
     "labels": [
         {
-            "text": "Title",
+            "text": "Chunk",
             "color": "#70DDBA"
         },
         {
-            "text": "Author",
+            "text": "Mandatory Requirement",
             "color": "#B8DE6F"
         },
         {
-            "text": "Abstract",
+            "text": "Optional Requirement",
             "color": "#A8DDA8"
         },
         {
@@ -26,69 +26,21 @@
             "color": "#D9E4DD"
         },
         {
-            "text": "ListItem",
-            "color": "#CEEBFC"
-        },
-        {
-            "text": "BibItem",
-            "color": "#C6CC82"
-        },
-        {
-            "text": "Default",
-            "color": "#BFBFBF"
-        },
-        {
-            "text": "Equation",
-            "color": "#D6D2C4"
-        },
-        {
             "text": "Figure",
             "color": "#EFDDF5"
         },
         {
             "text": "Table",
             "color": "#C7C2EB"
-        },
-        {
-            "text": "Algorithm",
-            "color": "#CFD4DF"
-        },
-        {
-            "text": "Caption",
-            "color": "#2F85F7"
-        },
-        {
-            "text": "Footer",
-            "color": "#FFB2A7"
-        },
-        {
-            "text": "Header",
-            "color": "#FFB2A7"
-        },
-        {
-            "text": "Author/Name",
-            "color": "#F5A25D"
-        },
-        {
-            "text": "Author/Affiliation",
-            "color": "#28ABB9"
-        },
-        {
-            "text": "Author/Email",
-            "color": "#706897"
-        },
-        {
-            "text": "Paper/Venue",
-            "color": "#34626C"
         }
     ],
     "relations": [
         {
-            "text": "Caption of",
+            "text": "Follow-up to",
             "color": "#D9E4DD"
         },
         {
-            "text": "Affiliated with",
+            "text": "Part of",
             "color": "#D9E4DD"
         }
     ],
