@@ -211,6 +211,48 @@ def get_annotations(
         return {"annotations": [], "relations": []}
 
 
+@app.get("/api/doc/{sha}/annotation_chunks")
+def get_annotations_with_chunk(
+    sha: str, x_auth_request_email: str = Header(None)
+):
+    def update_chunks(pages_tokens, annotations):
+        for ann in annotations["annotations"]:
+            aggregated_ann={}
+            # for one annotation
+            for t in ann["tokens"]:
+                aggregated_ann.setdefault(t["pageIndex"],[])
+                aggregated_ann[t["pageIndex"]].append(t["tokenIndex"])
+
+            anno_tokens=[]
+            for page,t_indices in aggregated_ann.items():
+                tokens=pages_tokens[page]
+                assert tokens["page"]["index"]==page
+                anno_tokens+=[tokens["tokens"][i]["text"] for i in t_indices]
+            ann["chunk"]=" ".join(anno_tokens)
+    
+   
+    user = get_user_from_header(x_auth_request_email)
+
+    pdf_tokens_path = os.path.join(configuration.output_directory, sha, "pdf_structure.json")
+    if not os.path.exists(pdf_tokens_path):
+        raise HTTPException(status_code=404, detail="No tokens for pdf.")
+    with open(pdf_tokens_path, "r") as f:
+        pdf_tokens = json.load(f)
+
+    annotations_path = os.path.join(
+        configuration.output_directory, sha, f"{user}_annotations.json"
+    )
+
+    if os.path.exists(annotations_path):
+        with open(annotations_path) as f:
+            annotations = json.load(f)
+            update_chunks(pdf_tokens,annotations)
+        return annotations
+
+    else:
+        return {"annotations": [], "relations": []}
+
+
 @app.post("/api/doc/{sha}/annotations")
 def save_annotations(
     sha: str,
