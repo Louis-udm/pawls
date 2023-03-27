@@ -314,9 +314,7 @@ def get_annotations_with_combined_chunk(
                 anno_to_merge_list[0]["chunk"] = " ".join(
                     [anno["chunk"] for anno in anno_to_merge_list]
                 )
-                anno_to_remove_list += [
-                    anno for anno in anno_to_merge_list[1:]
-                ]
+                anno_to_remove_list += anno_to_merge_list[1:]
         for anno in anno_to_remove_list:
             annotations["annotations"].remove(anno)
 
