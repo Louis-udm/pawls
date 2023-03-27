@@ -16,7 +16,8 @@ from app import pre_serve
 IN_PRODUCTION = os.getenv("IN_PRODUCTION", "dev")
 
 CONFIGURATION_FILE = os.getenv(
-    "PAWLS_CONFIGURATION_FILE", "/usr/local/src/skiff/app/api/config/configuration.json"
+    "PAWLS_CONFIGURATION_FILE",
+    "/usr/local/src/skiff/app/api/config/configuration.json",
 )
 
 handlers = None
@@ -89,7 +90,6 @@ def all_pdf_shas() -> List[str]:
 
 
 def update_status_json(status_path: str, sha: str, data: Dict[str, Any]):
-
     with open(status_path, "r+") as st:
         status_json = json.load(st)
         status_json[sha] = {**status_json[sha], **data}
@@ -132,7 +132,9 @@ async def get_pdf_title(sha: str) -> Optional[str]:
     sha: str
         The sha of the pdf title to return.
     """
-    pdf_info = os.path.join(configuration.output_directory, "pdf_metadata.json")
+    pdf_info = os.path.join(
+        configuration.output_directory, "pdf_metadata.json"
+    )
 
     with open(pdf_info, "r") as f:
         info = json.load(f)
@@ -147,10 +149,14 @@ async def get_pdf_title(sha: str) -> Optional[str]:
 
 @app.post("/api/doc/{sha}/comments")
 def set_pdf_comments(
-    sha: str, comments: str = Body(...), x_auth_request_email: str = Header(None)
+    sha: str,
+    comments: str = Body(...),
+    x_auth_request_email: str = Header(None),
 ):
     user = get_user_from_header(x_auth_request_email)
-    status_path = os.path.join(configuration.output_directory, "status", f"{user}.json")
+    status_path = os.path.join(
+        configuration.output_directory, "status", f"{user}.json"
+    )
     exists = os.path.exists(status_path)
 
     if not exists:
@@ -166,7 +172,9 @@ def set_pdf_junk(
     sha: str, junk: bool = Body(...), x_auth_request_email: str = Header(None)
 ):
     user = get_user_from_header(x_auth_request_email)
-    status_path = os.path.join(configuration.output_directory, "status", f"{user}.json")
+    status_path = os.path.join(
+        configuration.output_directory, "status", f"{user}.json"
+    )
     exists = os.path.exists(status_path)
     if not exists:
         # Not an allocated user. Do nothing.
@@ -178,10 +186,14 @@ def set_pdf_junk(
 
 @app.post("/api/doc/{sha}/finished")
 def set_pdf_finished(
-    sha: str, finished: bool = Body(...), x_auth_request_email: str = Header(None)
+    sha: str,
+    finished: bool = Body(...),
+    x_auth_request_email: str = Header(None),
 ):
     user = get_user_from_header(x_auth_request_email)
-    status_path = os.path.join(configuration.output_directory, "status", f"{user}.json")
+    status_path = os.path.join(
+        configuration.output_directory, "status", f"{user}.json"
+    )
     exists = os.path.exists(status_path)
     if not exists:
         # Not an allocated user. Do nothing.
@@ -211,29 +223,30 @@ def get_annotations(
         return {"annotations": [], "relations": []}
 
 
-@app.get("/api/doc/{sha}/annotation_chunks")
+@app.get("/api/doc/{sha}/annotation/chunks")
 def get_annotations_with_chunk(
     sha: str, x_auth_request_email: str = Header(None)
 ):
-    def update_chunks(pages_tokens, annotations):
+    def add_chunk_to_annotations(pages_tokens, annotations):
         for ann in annotations["annotations"]:
-            aggregated_ann={}
+            aggregated_ann = {}
             # for one annotation
             for t in ann["tokens"]:
-                aggregated_ann.setdefault(t["pageIndex"],[])
+                aggregated_ann.setdefault(t["pageIndex"], [])
                 aggregated_ann[t["pageIndex"]].append(t["tokenIndex"])
 
-            anno_tokens=[]
-            for page,t_indices in aggregated_ann.items():
-                tokens=pages_tokens[page]
-                assert tokens["page"]["index"]==page
-                anno_tokens+=[tokens["tokens"][i]["text"] for i in t_indices]
-            ann["chunk"]=" ".join(anno_tokens)
-    
-   
+            anno_tokens = []
+            for page, t_indices in aggregated_ann.items():
+                tokens = pages_tokens[page]
+                assert tokens["page"]["index"] == page
+                anno_tokens += [tokens["tokens"][i]["text"] for i in t_indices]
+            ann["chunk"] = " ".join(anno_tokens)
+
     user = get_user_from_header(x_auth_request_email)
 
-    pdf_tokens_path = os.path.join(configuration.output_directory, sha, "pdf_structure.json")
+    pdf_tokens_path = os.path.join(
+        configuration.output_directory, sha, "pdf_structure.json"
+    )
     if not os.path.exists(pdf_tokens_path):
         raise HTTPException(status_code=404, detail="No tokens for pdf.")
     with open(pdf_tokens_path, "r") as f:
@@ -246,7 +259,88 @@ def get_annotations_with_chunk(
     if os.path.exists(annotations_path):
         with open(annotations_path) as f:
             annotations = json.load(f)
-            update_chunks(pdf_tokens,annotations)
+            add_chunk_to_annotations(pdf_tokens, annotations)
+        return annotations
+
+    else:
+        return {"annotations": [], "relations": []}
+
+
+@app.get("/api/doc/{sha}/annotation/combined_chunks")
+def get_annotations_with_combined_chunk(
+    sha: str, x_auth_request_email: str = Header(None)
+):
+    def add_chunk_to_annotations(pages_tokens, annotations):
+        for ann in annotations["annotations"]:
+            aggregated_ann = {}
+            # for one annotation
+            for t in ann["tokens"]:
+                aggregated_ann.setdefault(t["pageIndex"], [])
+                aggregated_ann[t["pageIndex"]].append(t["tokenIndex"])
+
+            anno_tokens = []
+            for page, t_indices in aggregated_ann.items():
+                tokens = pages_tokens[page]
+                assert tokens["page"]["index"] == page
+                anno_tokens += [tokens["tokens"][i]["text"] for i in t_indices]
+            ann["chunk"] = " ".join(anno_tokens)
+
+    def remove_bounds_tokens(annotations):
+        for ann in annotations["annotations"]:
+            ann.pop("tokens")
+            ann.pop("bounds")
+
+    def combine_annotations(annotations):
+        anno_to_remove_list = []
+        for r in annotations["relations"]:
+            if r["label"]["text"] == "Combine to one chunk":
+                target_ids = r["targetIds"]
+                anno_to_merge_list = list(
+                    filter(
+                        lambda anno: anno["id"] in target_ids,
+                        annotations["annotations"],
+                    )
+                )
+                # Sort by bounds.left ->bounds.top -> page
+                anno_to_merge_list = sorted(
+                    anno_to_merge_list, key=lambda anno: anno["bounds"]["left"]
+                )
+                anno_to_merge_list = sorted(
+                    anno_to_merge_list, key=lambda anno: anno["bounds"]["top"]
+                )
+                anno_to_merge_list = sorted(
+                    anno_to_merge_list, key=lambda anno: anno["page"]
+                )
+                anno_to_merge_list[0]["chunk"] = " ".join(
+                    [anno["chunk"] for anno in anno_to_merge_list]
+                )
+                anno_to_remove_list += [
+                    anno for anno in anno_to_merge_list[1:]
+                ]
+        for anno in anno_to_remove_list:
+            annotations["annotations"].remove(anno)
+
+    user = get_user_from_header(x_auth_request_email)
+
+    pdf_tokens_path = os.path.join(
+        configuration.output_directory, sha, "pdf_structure.json"
+    )
+    if not os.path.exists(pdf_tokens_path):
+        raise HTTPException(status_code=404, detail="No tokens for pdf.")
+    with open(pdf_tokens_path, "r") as f:
+        pdf_tokens = json.load(f)
+
+    annotations_path = os.path.join(
+        configuration.output_directory, sha, f"{user}_annotations.json"
+    )
+
+    if os.path.exists(annotations_path):
+        with open(annotations_path) as f:
+            annotations = json.load(f)
+            add_chunk_to_annotations(pdf_tokens, annotations)
+            combine_annotations(annotations)
+            remove_bounds_tokens(annotations)
+
         return annotations
 
     else:
@@ -281,17 +375,23 @@ def save_annotations(
     json_relations = [jsonable_encoder(r) for r in relations]
 
     # Update the annotation counts in the status file.
-    status_path = os.path.join(configuration.output_directory, "status", f"{user}.json")
+    status_path = os.path.join(
+        configuration.output_directory, "status", f"{user}.json"
+    )
     exists = os.path.exists(status_path)
     if not exists:
         # Not an allocated user. Do nothing.
         return {}
 
     with open(annotations_path, "w+") as f:
-        json.dump({"annotations": json_annotations, "relations": json_relations}, f)
+        json.dump(
+            {"annotations": json_annotations, "relations": json_relations}, f
+        )
 
     update_status_json(
-        status_path, sha, {"annotations": len(annotations), "relations": len(relations)}
+        status_path,
+        sha,
+        {"annotations": len(annotations), "relations": len(relations)},
     )
 
     return {}
@@ -303,7 +403,9 @@ def get_tokens(sha: str):
     sha: str
         PDF sha to retrieve tokens for.
     """
-    pdf_tokens = os.path.join(configuration.output_directory, sha, "pdf_structure.json")
+    pdf_tokens = os.path.join(
+        configuration.output_directory, sha, "pdf_structure.json"
+    )
     if not os.path.exists(pdf_tokens):
         raise HTTPException(status_code=404, detail="No tokens for pdf.")
     with open(pdf_tokens, "r") as f:
@@ -329,8 +431,9 @@ def get_relations() -> List[Dict[str, str]]:
 
 
 @app.get("/api/annotation/allocation/info")
-def get_allocation_info(x_auth_request_email: str = Header(None)) -> Allocation:
-
+def get_allocation_info(
+    x_auth_request_email: str = Header(None),
+) -> Allocation:
     # In development, the app isn't passed the x_auth_request_email header,
     # meaning this would always fail. Instead, to smooth local development,
     # we always return all pdfs, essentially short-circuiting the allocation
@@ -345,10 +448,7 @@ def get_allocation_info(x_auth_request_email: str = Header(None)) -> Allocation:
         # If the user doesn't have allocated papers, they can see all the
         # pdfs but they can't save anything.
         papers = [PaperStatus.empty(sha, sha) for sha in all_pdf_shas()]
-        response = Allocation(
-            papers=papers,
-            hasAllocatedPapers=False
-        )
+        response = Allocation(papers=papers, hasAllocatedPapers=False)
 
     else:
         with open(status_path) as f:

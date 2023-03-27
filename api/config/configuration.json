@@ -2,10 +2,6 @@
     "output_directory": "/skiff_files/apps/pawls/papers/",
     "labels": [
         {
-            "text": "Chunk",
-            "color": "#70DDBA"
-        },
-        {
             "text": "Mandatory Requirement",
             "color": "#B8DE6F"
         },
@@ -22,10 +18,6 @@
             "color": "#FFDA77"
         },
         {
-            "text": "Paragraph",
-            "color": "#D9E4DD"
-        },
-        {
             "text": "Figure",
             "color": "#EFDDF5"
         },
@@ -36,11 +28,11 @@
     ],
     "relations": [
         {
-            "text": "Follow-up to",
+            "text": "Combine to one chunk",
             "color": "#D9E4DD"
         },
         {
-            "text": "Part of",
+            "text": "Related to",
             "color": "#D9E4DD"
         }
     ],
